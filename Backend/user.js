@@ -114,5 +114,42 @@ router.get('/profile', verifyToken, async (req, res) => {
         res.status(500).json({ error: "Failed to retrieve profile." });
     }
 });
+// ==================================================================
+// API: REGISTER AS SELLER (UPGRADE TO SELLER)
+// Endpoint: POST /api/user/become-seller
+// ==================================================================
+router.post('/become-seller', verifyToken, async (req, res) => {
+    const userId = req.user.id;
+    const { shopName, shopDescription } = req.body;
+
+    // 1. Validate dữ liệu
+    if (!shopName) {
+        return res.status(400).json({ error: "Please enter a Shop name" });
+    }
+
+    try {
+        // 2. Kiểm tra xem User này đã là Seller chưa (Tránh lỗi Duplicate Key)
+        const [existing] = await db.query('SELECT UserID FROM SELLER WHERE UserID = ?', [userId]);
+        if (existing.length > 0) {
+            return res.status(400).json({ error: "This account is already a Seller!" });
+        }
+
+        // 3. Insert vào bảng SELLER
+        await db.query(
+            'INSERT INTO SELLER (UserID, ShopName, ShopDescription, Rating, ResponseRate) VALUES (?, ?, ?, 5.0, 100)',
+            [userId, shopName, shopDescription || '']
+        );
+
+        res.json({ message: "Congratulations! You are now a Seller." });
+
+    } catch (error) {
+        console.error("Register Seller Error:", error); 
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({ error: "Shop name already exists." });
+        }
+        
+        res.status(500).json({ error: "System error: " + error.message });
+    }
+});
 
 module.exports = router;

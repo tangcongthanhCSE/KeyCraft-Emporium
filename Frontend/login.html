@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Đăng nhập - KeyCraft Emporium</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="navbar">
+        <h1>KeyCraft Emporium</h1>
+        <div>Kết nối & Mua sắm</div>
+    </div>
+
+    <div class="auth-container">
+        <div id="login-form">
+            <div class="auth-header">Đăng Nhập</div>
+            <form onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <input type="text" id="login-username" placeholder="Tên đăng nhập" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" id="login-password" placeholder="Mật khẩu" required>
+                </div>
+                <button type="submit" class="btn-primary">ĐĂNG NHẬP</button>
+            </form>
+            <div class="auth-switch">
+                Chưa có tài khoản? <a onclick="toggleAuth()">Đăng ký ngay</a>
+            </div>
+        </div>
+
+        <div id="register-form" class="hidden">
+            <div class="auth-header">Đăng Ký</div>
+            <form onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <input type="text" id="reg-username" placeholder="Tên đăng nhập" required>
+                </div>
+                <div class="form-group">
+                    <input type="email" id="reg-email" placeholder="Email" required>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="reg-phone" placeholder="Số điện thoại" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" id="reg-password" placeholder="Mật khẩu" required>
+                </div>
+                <button type="submit" class="btn-primary">ĐĂNG KÝ</button>
+            </form>
+            <div class="auth-switch">
+                Đã có tài khoản? <a onclick="toggleAuth()">Đăng nhập</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+</body>
+</html>

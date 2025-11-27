@@ -1,40 +1,44 @@
-// File: index.js
+// File: backend/index.js
 const express = require('express');
 const cors = require('cors');
-const db = require('./db'); // Import database connection
-const authRoutes = require('./auth'); // Import Auth routes
-const userRoutes = require('./user'); // Import User routes
+const db = require('./db');
+
+// Import Route Handlers
+const authRoutes = require('./auth');
+const userRoutes = require('./user');
+const adminRoutes = require('./admin');
+const sellerRoutes = require('./seller');
+const productRoutes = require('./product');
+
 require('dotenv').config();
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 // --- MIDDLEWARE ---
-app.use(cors()); // Enable Cross-Origin Resource Sharing (Allows frontend to call API)
-app.use(express.json()); // Parse incoming JSON request bodies
+app.use(cors()); 
+app.use(express.json()); 
 
-// --- ROUTES ---
-// Mount auth routes at /api/auth
-app.use('/api/auth', authRoutes);
-// Mount user routes at /api/user
-app.use('/api/user', userRoutes);
+// --- REGISTER ROUTES ---
+app.use('/api/auth', authRoutes);      // Auth (Login/Register)
+app.use('/api/user', userRoutes);      // User Profile
+app.use('/api/admin', adminRoutes);    // Admin Dashboard
+app.use('/api/seller', sellerRoutes);  // Seller Dashboard
+app.use('/api/products', productRoutes); // Product Management
 
-// 1. Health Check Endpoint
+// 1. Health Check
 app.get('/', (req, res) => {
-    res.send('🚀 KeyCraft Emporium Backend is running (Connected to Aiven MySQL)...');
+    res.send('🚀 KeyCraft Emporium Backend is running...');
 });
 
-// 2. Database Connection Test Endpoint
+// 2. DB Connection Test
 app.get('/api/test-db', async (req, res) => {
     try {
         const [rows] = await db.query('SELECT 1 as result');
-        res.json({ 
-            message: "Aiven MySQL Connection Successful!", 
-            test_result: rows 
-        });
+        res.json({ message: "✅ DB Connection OK!", test: rows });
     } catch (error) {
-        console.error("Database Error:", error);
-        res.status(500).json({ error: "Database connection failed." });
+        console.error(error);
+        res.status(500).json({ error: "DB Connection Failed" });
     }
 });
 

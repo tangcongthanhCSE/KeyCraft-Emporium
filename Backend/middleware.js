@@ -11,43 +11,41 @@ const JWT_SECRET = process.env.JWT_SECRET || 'keycraft_secret_key_2024';
  * Usage: Add this middleware to any protected route.
  */
 const verifyToken = (req, res, next) => {
-    // Get the 'Authorization' header from the request
+    console.log("   [1] Đang kiểm tra Token..."); // <--- LOG DEBUG
+
     const authHeader = req.headers['authorization'];
-    
-    // Expected format: "Bearer <token_string>"
     const token = authHeader && authHeader.split(' ')[1]; 
 
     if (!token) {
-        // 401 Unauthorized: No token provided
-        return res.status(401).json({ error: "Access Denied. No token provided." });
+        console.log("   [Error] Không tìm thấy Token trong Header!"); // <--- LOG DEBUG
+        return res.status(401).json({ error: "Truy cập bị từ chối. Vui lòng gửi kèm Token." });
     }
 
     try {
-        // Verify the token using the secret key
         const verified = jwt.verify(token, JWT_SECRET);
-        
-        // Attach the decoded user payload (id, role, username) to the request object
-        // This allows downstream route handlers to access 'req.user'
-        req.user = verified; 
-        
-        next(); // Proceed to the next middleware or route handler
+        req.user = verified;
+        console.log("   [2] Token hợp lệ! User decoded:", verified); // <--- LOG DEBUG QUAN TRỌNG: Xem role là gì
+        next(); 
     } catch (err) {
-        // 403 Forbidden: Token is invalid or expired
-        console.error("Token Verification Error:", err.message); 
-        res.status(403).json({ error: "Invalid or expired token." }); 
+        console.log("   [Error] Token lỗi:", err.message); // <--- LOG DEBUG: Xem lỗi cụ thể (hết hạn hay sai key)
+        res.status(403).json({ error: "Token không hợp lệ hoặc đã hết hạn" });
     }
 };
 
-/**
- * Middleware: verifyAdmin
- * Purpose: Ensure the authenticated user has the 'Admin' role.
- */
+// 2. Middleware phân quyền Admin
 const verifyAdmin = (req, res, next) => {
+    console.log("Middleware Admin đang kiểm tra...");
+    
     verifyToken(req, res, () => {
+        // Khi verifyToken chạy xong next(), nó sẽ nhảy vào đây
+        console.log("   [3] Đang check Role Admin. Role hiện tại là:", req.user.role); // <--- LOG DEBUG
+
         if (req.user.role === 'Admin') {
-            next(); // User is Admin, proceed
+            console.log("   [4] Role đúng là Admin -> Cho qua!"); // <--- LOG DEBUG
+            next();
         } else {
-            res.status(403).json({ error: "Access Denied. Admin privileges required." });
+            console.log("   [Error] Bị chặn vì Role không phải Admin!"); // <--- LOG DEBUG
+            res.status(403).json({ error: "Bạn không có quyền Admin!" });
         }
     });
 };
