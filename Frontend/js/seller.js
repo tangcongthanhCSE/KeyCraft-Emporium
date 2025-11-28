@@ -3,31 +3,43 @@
 // 1. Security Check: Ensure user is Seller
 const user = JSON.parse(localStorage.getItem('user'));
 if (!user || user.role !== 'Seller') {
-    alert("Access Denied! Sellers only.");
+    alert("You do not have access to the Seller Channel!");
     window.location.href = 'index.html';
 }
 
-// 2. Initialize Defaults
+// 2. Initialize Defaults & Load Data
 document.addEventListener('DOMContentLoaded', () => {
     // Set default dates for analytics (First day and Last day of current month)
     const date = new Date();
     const firstDay = new Date(date.getFullYear(), date.getMonth(), 1).toISOString().split('T')[0];
     const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString().split('T')[0];
     
-    document.getElementById('report-start').value = firstDay;
-    document.getElementById('report-end').value = lastDay;
+    const startInput = document.getElementById('report-start');
+    const endInput = document.getElementById('report-end');
+    
+    if (startInput && endInput) {
+        startInput.value = firstDay;
+        endInput.value = lastDay;
+    }
+    
+    // Set default month for calculator
+    const calcMonth = document.getElementById('calc-month');
+    if (calcMonth) calcMonth.value = date.getMonth() + 1;
 
-    // Load Data
+    // Load Product List
     loadMyProducts();
 });
 
 // ==========================================
-// ANALYTICS LOGIC (New)
+// ANALYTICS LOGIC (STORED PROCEDURE 2.3)
 // ==========================================
+// File: Frontend/js/seller.js
+
 async function loadAnalytics() {
     const start = document.getElementById('report-start').value;
     const end = document.getElementById('report-end').value;
     const minSold = document.getElementById('report-min').value;
+    
     const tbody = document.getElementById('analytics-body');
     const tfoot = document.getElementById('analytics-footer');
 
@@ -35,7 +47,6 @@ async function loadAnalytics() {
     tfoot.innerHTML = '';
 
     try {
-        // Call Backend API -> Calls Stored Procedure
         const res = await authFetch(`/seller/analytics?start=${start}&end=${end}&minSold=${minSold}`);
         
         if (!res.ok) throw new Error("Failed to fetch report");
@@ -44,30 +55,39 @@ async function loadAnalytics() {
         const data = json.data || [];
 
         if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">No sales data found for this period.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">No sales data found.</td></tr>';
             return;
         }
 
-        // Render Table Rows
+        // Tính tổng trước khi render để đảm bảo chính xác
         let grandTotalRevenue = 0;
-        tbody.innerHTML = data.map(item => {
-            grandTotalRevenue += parseFloat(item.TotalRevenue);
+        
+        // Render Table Rows
+        const rowsHtml = data.map(item => {
+            // Ép kiểu số an toàn (tránh null/undefined)
+            const revenue = parseFloat(item.TotalRevenue || 0);
+            const rating = parseFloat(item.ProductRating || 0);
+            
+            grandTotalRevenue += revenue;
+
             return `
             <tr>
                 <td><b>${item.ProductName}</b></td>
-                <td>⭐ ${item.ProductRating || '0.0'}</td>
-                <td>${item.TotalOrders}</td>
-                <td>${item.TotalUnitsSold}</td>
-                <td style="color: var(--primary-color); font-weight: bold;">$${item.TotalRevenue}</td>
+                <td><span style="color: #ffc107;">★</span> ${rating.toFixed(1)}</td>
+                <td style="text-align: center;">${item.TotalOrders}</td>
+                <td style="text-align: center;">${item.TotalUnitsSold}</td>
+                <td style="color: var(--primary-color); font-weight: bold;">$${revenue.toFixed(2)}</td>
             </tr>
             `;
         }).join('');
 
+        tbody.innerHTML = rowsHtml;
+
         // Render Footer Summary
         tfoot.innerHTML = `
             <tr>
-                <td colspan="4" style="text-align: right;">TOTAL REVENUE:</td>
-                <td style="color: var(--primary-color); font-size: 16px;">$${grandTotalRevenue.toFixed(2)}</td>
+                <td colspan="4" style="text-align: right; padding-right: 15px;">TOTAL REVENUE:</td>
+                <td style="color: var(--primary-color); font-size: 16px; font-weight: bold;">$${grandTotalRevenue.toFixed(2)}</td>
             </tr>
         `;
 
@@ -78,29 +98,68 @@ async function loadAnalytics() {
 }
 
 // ==========================================
-// PRODUCT MANAGEMENT LOGIC
+// REVENUE CALCULATOR (SQL FUNCTION 2.4)
+// ==========================================
+async function calculateRevenue() {
+    const month = document.getElementById('calc-month').value;
+    const year = document.getElementById('calc-year').value;
+    const resultSpan = document.getElementById('calc-revenue-result');
+
+    resultSpan.innerText = "Calculating...";
+    resultSpan.style.color = "#999";
+
+    try {
+        // Call Backend API -> Calls SQL Function fn_CalculateShopMonthlyRevenue
+        const res = await authFetch(`/seller/monthly-revenue?month=${month}&year=${year}`);
+        const data = await res.json();
+
+        if (res.ok) {
+            const revenue = parseFloat(data.revenue).toFixed(2);
+            resultSpan.innerText = `$${revenue}`;
+            resultSpan.style.color = "#28a745";
+        } else {
+            resultSpan.innerText = "Error";
+            resultSpan.style.color = "red";
+            alert(data.error);
+        }
+    } catch (error) {
+        console.error(error);
+        resultSpan.innerText = "Failed";
+        resultSpan.style.color = "red";
+    }
+}
+
+// ==========================================
+// PRODUCT MANAGEMENT LOGIC (CRUD)
 // ==========================================
 
 async function loadMyProducts() {
     const tbody = document.getElementById('product-table-body');
-    tbody.innerHTML = '<tr><td colspan="6">Loading products...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">Loading product list...</td></tr>';
 
     try {
         const res = await authFetch('/seller/products');
         const products = await res.json();
 
         if (products.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">You have no products. Add one!</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 30px;">You have no products yet. Add some!</td></tr>';
             return;
         }
 
         tbody.innerHTML = products.map(p => `
             <tr>
                 <td>#${p.ProductID}</td>
-                <td><b>${p.Name}</b></td>
-                <td>$${p.BasePrice}</td>
+                <td>
+                    <div style="font-weight: bold; color: #333;">${p.Name}</div>
+                    <div style="font-size: 12px; color: #888;">${p.Description || ''}</div>
+                </td>
+                <td style="font-weight: 500;">$${p.BasePrice}</td>
                 <td>${p.StockQuantity}</td>
-                <td><span style="padding: 2px 6px; background: #eee; border-radius: 3px; font-size: 11px;">${p.ConditionState}</span></td>
+                <td>
+                    <span style="padding: 3px 8px; background: ${p.ConditionState === 'New' ? '#e6f4ea' : '#fff8e1'}; color: ${p.ConditionState === 'New' ? '#1e7e34' : '#f0a500'}; border-radius: 10px; font-size: 11px; font-weight: bold;">
+                        ${p.ConditionState}
+                    </span>
+                </td>
                 <td>
                     <button class="btn-sm btn-edit" onclick='openEditModal(${JSON.stringify(p)})'>Edit</button>
                     <button class="btn-sm btn-delete" onclick="deleteProduct(${p.ProductID})">Delete</button>
@@ -109,7 +168,7 @@ async function loadMyProducts() {
         `).join('');
     } catch (error) {
         console.error(error);
-        alert("Error loading products");
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red">Failed to connect to server</td></tr>';
     }
 }
 
@@ -119,6 +178,7 @@ const modal = document.getElementById('product-modal');
 function openModal() {
     document.getElementById('modal-title').innerText = "Add New Product";
     document.getElementById('prod-id').value = "";
+    
     // Reset form
     document.getElementById('prod-name').value = "";
     document.getElementById('prod-desc').value = "";
@@ -136,7 +196,7 @@ function openEditModal(product) {
     document.getElementById('modal-title').innerText = "Edit Product #" + product.ProductID;
     document.getElementById('prod-id').value = product.ProductID;
     
-    // Fill existing data
+    // Fill data
     document.getElementById('prod-name').value = product.Name;
     document.getElementById('prod-desc').value = product.Description;
     document.getElementById('prod-price').value = product.BasePrice;
@@ -144,7 +204,7 @@ function openEditModal(product) {
     document.getElementById('prod-weight').value = product.Weight;
     document.getElementById('prod-dim').value = product.Dimensions;
     document.getElementById('prod-cond').value = product.ConditionState;
-    document.getElementById('prod-preorder').checked = product.IsPreOrder === 1;
+    document.getElementById('prod-preorder').checked = product.IsPreOrder === 1; // MySQL boolean is 1/0
 
     modal.classList.add('active');
 }
@@ -153,7 +213,7 @@ function closeModal() {
     modal.classList.remove('active');
 }
 
-// --- ACTION HANDLERS ---
+// --- ACTION HANDLERS (Add/Edit/Delete) ---
 
 async function handleSaveProduct(event) {
     event.preventDefault();
@@ -175,11 +235,13 @@ async function handleSaveProduct(event) {
     try {
         let res;
         if (isEdit) {
+            // Call SP 2.1 Update
             res = await authFetch(`/seller/products/${id}`, {
                 method: 'PUT',
                 body: JSON.stringify(payload)
             });
         } else {
+            // Call SP 2.1 Insert
             res = await authFetch('/seller/products', {
                 method: 'POST',
                 body: JSON.stringify(payload)
@@ -189,23 +251,24 @@ async function handleSaveProduct(event) {
         const data = await res.json();
 
         if (res.ok) {
-            alert(isEdit ? "Product Updated!" : "Product Created!");
+            alert(isEdit ? "Product updated successfully!" : "Product added successfully!");
             closeModal();
-            loadMyProducts();
+            loadMyProducts(); // Refresh list
         } else {
             alert("Error: " + data.error);
         }
 
     } catch (error) {
         console.error(error);
-        alert("Connection Error");
+        alert("Server connection error");
     }
 }
 
 async function deleteProduct(id) {
-    if (!confirm("Are you sure you want to delete this product?")) return;
+    if (!confirm("Are you sure you want to delete this product? This action cannot be undone.")) return;
 
     try {
+        // Call SP 2.1 Delete
         const res = await authFetch(`/seller/products/${id}`, {
             method: 'DELETE'
         });
@@ -213,17 +276,18 @@ async function deleteProduct(id) {
         const data = await res.json();
 
         if (res.ok) {
-            alert("Product Deleted!");
+            alert("Product deleted successfully!");
             loadMyProducts();
         } else {
             alert("Cannot delete: " + data.error);
         }
     } catch (error) {
         console.error(error);
+        alert("Server connection error");
     }
 }
 
-// Close modal when clicking outside
+// Close modal when clicking outside content
 window.onclick = function(event) {
     if (event.target == modal) {
         closeModal();

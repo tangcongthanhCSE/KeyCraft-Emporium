@@ -65,3 +65,29 @@ background: linear-gradient(-180deg, #f53d2d, #f63);
 
 /* Utilities */
 .hidden { display: none !important; }
+
+.btn-add-cart {
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
+    width: 40px; /* Tăng kích thước một chút cho đẹp */
+    height: 40px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    transition: transform 0.2s;
+    z-index: 2;
+}
+
+/* Thêm class mới này để ẩn nút */
+.btn-add-cart.hidden {
+    display: none !important;
+}

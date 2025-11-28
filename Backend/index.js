@@ -9,6 +9,8 @@ const userRoutes = require('./user');
 const adminRoutes = require('./admin');
 const sellerRoutes = require('./seller');
 const productRoutes = require('./product');
+const cartRoutes = require('./cart');
+
 
 require('dotenv').config();
 
@@ -25,7 +27,7 @@ app.use('/api/user', userRoutes);      // User Profile
 app.use('/api/admin', adminRoutes);    // Admin Dashboard
 app.use('/api/seller', sellerRoutes);  // Seller Dashboard
 app.use('/api/products', productRoutes); // Product Management
-
+app.use('/api/cart', cartRoutes);        // Shopping Cart
 // 1. Health Check
 app.get('/', (req, res) => {
     res.send('🚀 KeyCraft Emporium Backend is running...');

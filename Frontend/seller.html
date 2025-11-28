@@ -2,17 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Seller Center - KeyCraft</title>
     <link rel="stylesheet" href="css/style.css">
     <style>
         .container { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
         
         /* Toolbar & Panels */
-        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; margin-top: 30px;}
+        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; margin-top: 40px;}
         
         /* Analytics Section Styles */
         .analytics-panel { 
-            background: white; padding: 20px; border-radius: 4px; 
+            background: white; padding: 25px; border-radius: 4px; 
             box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-top: 4px solid var(--primary-color);
         }
         
@@ -35,7 +36,7 @@
         /* Modal */
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; visibility: hidden; opacity: 0; transition: opacity 0.3s; }
         .modal.active { visibility: visible; opacity: 1; }
-        .modal-content { background: white; width: 500px; padding: 20px; border-radius: 4px; position: relative; max-height: 90vh; overflow-y: auto; }
+        .modal-content { background: white; width: 500px; padding: 30px; border-radius: 4px; position: relative; max-height: 90vh; overflow-y: auto; }
         .close-btn { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; }
         
         .form-row { display: flex; gap: 15px; }
@@ -56,7 +57,7 @@
     <div class="container">
         
         <div class="analytics-panel">
-            <h3 style="margin-bottom: 15px;">Sales Analytics Report</h3>
+            <h3 style="margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px;">Revenue (Analytics)</h3>
             
             <div class="filter-bar">
                 <div class="filter-group">
@@ -68,40 +69,58 @@
                     <input type="date" id="report-end">
                 </div>
                 <div class="filter-group">
-                    <label>Min Sold Qty:</label>
-                    <input type="number" id="report-min" value="1" style="width: 80px;">
+                    <label>Minimum Sold (Qty):</label>
+                    <input type="number" id="report-min" value="1" style="width: 120px;">
                 </div>
-                <button class="btn-primary" onclick="loadAnalytics()" style="height: 35px;">View Report</button>
+                <button class="btn-primary" onclick="loadAnalytics()" style="height: 35px; padding: 0 20px;">View Report</button>
             </div>
 
-            <table id="analytics-table">
+            <table id="analytics-table" style="margin-bottom: 20px;">
                 <thead>
                     <tr>
                         <th>Product Name</th>
-                        <th>Avg Rating</th>
-                        <th>Total Orders</th>
-                        <th>Units Sold</th>
-                        <th>Total Revenue ($)</th>
+                        <th>Ratings</th>
+                        <th style="text-align: center;">Orders</th>
+                        <th style="text-align: center;">Sold</th>
+                        <th>Revenue</th>
                     </tr>
                 </thead>
                 <tbody id="analytics-body">
                     <tr><td colspan="5" style="text-align: center; color: #777;">Click "View Report" to load data.</td></tr>
                 </tbody>
-                <tfoot id="analytics-footer" style="background: #f1f1f1; font-weight: bold;">
-                    </tfoot>
+                <tfoot id="analytics-footer" style="background: #f1f1f1; font-weight: bold;"></tfoot>
             </table>
+
+            <hr style="margin: 20px 0; border: 0; border-top: 1px dashed #ddd;">
+
+            <div style="display: flex; align-items: center; gap: 15px; background: #f8f9fa; padding: 15px; border-radius: 4px; border: 1px solid #e9ecef;">
+                <h4 style="margin: 0; color: #28a745;">💰 Quick Revenue Calculation (SQL):</h4>
+                
+                <select id="calc-month" style="padding: 6px; border-radius: 4px; border: 1px solid #ced4da;">
+                    <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+                    <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+                    <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+                    <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+                </select>
+                
+                <input type="number" id="calc-year" value="2024" style="width: 80px; padding: 6px; border-radius: 4px; border: 1px solid #ced4da;">
+                
+                <button class="btn-sm" style="background: #28a745; font-size: 14px; padding: 6px 15px;" onclick="calculateRevenue()">Calculate</button>
+                
+                <span style="margin-left: 10px; font-weight: bold; font-size: 20px; color: #28a745;" id="calc-revenue-result">$0.00</span>
+            </div>
         </div>
 
         <div class="toolbar">
             <h2>My Products</h2>
-            <button class="btn-primary" style="width: 150px" onclick="openModal()">+ Add Product</button>
+            <button class="btn-primary" style="width: 180px" onclick="openModal()">+ Add Product</button>
         </div>
 
         <table>
             <thead>
                 <tr>
                     <th>ID</th>
-                    <th>Name</th>
+                    <th style="width: 30%">Product Name</th>
                     <th>Price</th>
                     <th>Stock</th>
                     <th>Condition</th>
@@ -122,30 +141,35 @@
                 <input type="hidden" id="prod-id">
                 
                 <div class="form-group">
+                    <label>Image URL:</label>
+                    <input type="text" id="prod-image" placeholder="https://example.com/image.jpg">
+                </div>
+
+                <div class="form-group">
                     <label>Product Name:</label>
-                    <input type="text" id="prod-name" required>
+                    <input type="text" id="prod-name" placeholder="Enter product name">
                 </div>
                 
                 <div class="form-group">
                     <label>Description:</label>
-                    <input type="text" id="prod-desc">
+                    <input type="text" id="prod-desc" placeholder="Product description">
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label>Price ($):</label>
-                        <input type="number" id="prod-price" step="0.01" required>
+                        <input type="number" id="prod-price" step="0.01" placeholder="Enter price">
                     </div>
                     <div class="form-group">
                         <label>Stock:</label>
-                        <input type="number" id="prod-stock" required>
+                        <input type="number" id="prod-stock" placeholder="Enter stock quantity">
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label>Weight (g):</label>
-                        <input type="number" id="prod-weight" required>
+                        <input type="number" id="prod-weight" placeholder="Weight in grams">
                     </div>
                     <div class="form-group">
                         <label>Dimensions:</label>

@@ -1,35 +1,56 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Hồ sơ của tôi</title>
+    <title>My Profile - KeyCraft Emporium</title>
     <link rel="stylesheet" href="css/style.css">
     <style>
         .profile-layout { display: flex; gap: 20px; max-width: 1000px; margin: 20px auto; }
-        .sidebar { width: 250px; background: white; padding: 20px; border-radius: 4px; height: fit-content; }
-        .content { flex: 1; background: white; padding: 30px; border-radius: 4px; }
+        .sidebar { width: 250px; background: white; padding: 20px; border-radius: 4px; height: fit-content; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .content { flex: 1; background: white; padding: 30px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         
         .avatar-box { text-align: center; margin-bottom: 20px; }
         .avatar-img { width: 100px; height: 100px; border-radius: 50%; background: #ddd; object-fit: cover; }
         
         .info-row { display: flex; margin-bottom: 15px; align-items: center; }
-        .info-label { width: 150px; color: #555; }
+        .info-label { width: 150px; color: #555; font-weight: 500; }
         .info-value { flex: 1; font-weight: 500; }
+        .info-input { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
         
-        .section-title { font-size: 18px; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px; margin-top: 30px; }
+        .section-title { font-size: 18px; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px; margin-top: 30px; font-weight: bold; color: #333; }
         
-        .address-card { border: 1px dashed #ee4d2d; padding: 10px; margin-bottom: 10px; border-radius: 4px; background: #fffdfb; }
-        
-        /* Form Đăng ký Seller */
+        .address-card { border: 1px dashed #ee4d2d; padding: 15px; margin-bottom: 10px; border-radius: 4px; background: #fffdfb; }
         .seller-regist-box { background: #fff8e1; border: 1px solid #ffc107; padding: 20px; border-radius: 4px; margin-top: 20px; }
+        .rank-box { margin-top: 15px; padding: 15px; background: #f0f8ff; border: 1px dashed #007bff; border-radius: 4px; text-align: center; }
+
+        /* Order Card Styles */
+        .order-card { border: 1px solid #eee; border-radius: 4px; margin-bottom: 15px; overflow: hidden; }
+        .order-header { background: #f9f9f9; padding: 10px 15px; display: flex; justify-content: space-between; font-size: 13px; border-bottom: 1px solid #eee; }
+        .order-body { padding: 15px; }
+        .order-item { display: flex; gap: 15px; margin-bottom: 10px; align-items: center; }
+        .item-img { width: 60px; height: 60px; border: 1px solid #eee; object-fit: cover; }
+        .order-footer { padding: 10px 15px; border-top: 1px dashed #eee; display: flex; justify-content: flex-end; align-items: center; gap: 15px; }
+        
+        .status-badge { padding: 4px 8px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+        .status-preparing { background: #fff3cd; color: #856404; } /* Yellow */
+        .status-delivered { background: #d4edda; color: #155724; } /* Green */
+        
+        /* Star Rating */
+        .star-rating .selected { color: #ffc107; }
+
+        /* Modal Styles */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; visibility: hidden; opacity: 0; transition: opacity 0.3s; }
+        .modal.active { visibility: visible; opacity: 1; }
+        .modal-content { background: white; width: 400px; padding: 25px; border-radius: 4px; position: relative; }
+        .close-btn { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; }
     </style>
 </head>
 <body>
     <div class="navbar">
         <h1 onclick="window.location.href='index.html'">KeyCraft Emporium</h1>
         <div class="user-info">
-            <a href="index.html" class="btn-nav">Trang Chủ</a>
-            <a onclick="logout()" class="btn-nav">Đăng xuất</a>
+            <a href="index.html" class="btn-nav">Home</a>
+            <a onclick="logout()" class="btn-nav">Logout</a>
         </div>
     </div>
 
@@ -38,58 +59,99 @@
             <div class="avatar-box">
                 <img id="view-avatar" class="avatar-img" src="https://via.placeholder.com/100" alt="Avatar">
                 <h3 id="view-username" style="margin-top: 10px">...</h3>
-                <p id="view-role" style="color: #ee4d2d; font-size: 14px">...</p>
+                <p id="view-role" style="color: #ee4d2d; font-size: 14px; font-weight: bold;">...</p>
             </div>
             <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-            <div style="font-size: 14px">
-                <p>Xu tích lũy: <b id="view-coin">0</b></p>
-                <p>Hạng: <b id="view-rank">Silver</b></p>
+            <div style="font-size: 14px; line-height: 1.6;">
+                <p>Coin Balance: <b id="view-coin" style="color: #ffc107;">0</b></p>
+                <p>Current Rank: <b id="view-rank">Silver</b></p>
+                
+                <div class="rank-box">
+                    <small style="display:block; color:#555; margin-bottom:8px;">Check Real-time Rank (SQL):</small>
+                    <button class="btn-sm" style="background: #007bff; width: 100%; padding: 8px; border-radius: 4px; border: none; color: white; cursor: pointer;" onclick="calculateRank()">Check Now</button>
+                    <div id="calc-rank-result" style="margin-top: 8px; font-weight: bold; color: #0056b3;">---</div>
+                </div>
             </div>
         </div>
 
         <div class="content">
-            <div class="section-title">Hồ Sơ Của Tôi</div>
+            <div class="section-title" style="margin-top: 0;">Personal Information</div>
             
             <div class="info-row">
                 <span class="info-label">Email:</span>
                 <span class="info-value" id="view-email">...</span>
             </div>
             <div class="info-row">
-                <span class="info-label">Số điện thoại:</span>
-                <input type="text" id="edit-phone" placeholder="Thêm số điện thoại">
+                <span class="info-label">Phone:</span>
+                <input type="text" id="edit-phone" class="info-input" placeholder="Add phone number">
             </div>
             <div class="info-row">
-                <span class="info-label">Link Avatar:</span>
-                <input type="text" id="edit-avatar" placeholder="Dán link ảnh vào đây">
+                <span class="info-label">Avatar URL:</span>
+                <input type="text" id="edit-avatar" class="info-input" placeholder="Paste image URL here">
             </div>
-            <button class="btn-primary" style="width: 150px" onclick="updateProfile()">Lưu Thay Đổi</button>
+            <button class="btn-primary" style="width: 150px" onclick="updateProfile()">Save Changes</button>
 
-            <div class="section-title">Địa Chỉ Giao Hàng</div>
+            <div class="section-title">Address Book</div>
             <div id="address-list">
-                </div>
+                <p style="color: #777; font-style: italic;">No addresses found.</p>
+            </div>
             
-            <div style="margin-top: 10px; display: flex; gap: 10px;">
-                <input type="text" id="addr-name" placeholder="Tên người nhận" style="width: 30%">
-                <input type="text" id="addr-city" placeholder="Tỉnh/TP" style="width: 20%">
-                <input type="text" id="addr-street" placeholder="Số nhà, đường..." style="width: 40%">
-                <button class="btn-primary" style="width: 10%" onclick="addAddress()">+</button>
+            <div style="margin-top: 15px; display: flex; gap: 10px;">
+                <input type="text" id="addr-name" class="info-input" placeholder="Receiver Name" style="flex: 2">
+                <input type="text" id="addr-city" class="info-input" placeholder="City" style="flex: 1">
+                <input type="text" id="addr-street" class="info-input" placeholder="Street Address..." style="flex: 3">
+                <button class="btn-primary" style="width: 50px" onclick="addAddress()">+</button>
+            </div>
+
+            <div class="section-title" style="margin-top: 40px; display: flex; justify-content: space-between; align-items: center;">
+                <span>My Orders</span>
+                <button class="btn-sm" onclick="loadOrders()" style="background: #666; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">Refresh Status</button>
+            </div>
+            <div id="order-list">
+                <p>Loading orders...</p>
             </div>
 
             <div id="seller-regist-area" class="hidden">
-                <div class="section-title">Đăng Ký Bán Hàng</div>
+                <div class="section-title">Seller Registration</div>
                 <div class="seller-regist-box">
-                    <p style="margin-bottom: 10px">Bạn muốn trở thành Người bán trên KeyCraft?</p>
+                    <p style="margin-bottom: 15px; font-weight: 500;">Want to start selling on KeyCraft Emporium?</p>
                     <div class="form-group">
-                        <label>Tên Shop:</label>
-                        <input type="text" id="shop-name" placeholder="Nhập tên shop của bạn">
+                        <label>Shop Name:</label>
+                        <input type="text" id="shop-name" placeholder="Enter your shop name">
                     </div>
                     <div class="form-group">
-                        <label>Mô tả Shop:</label>
-                        <input type="text" id="shop-desc" placeholder="Giới thiệu ngắn gọn...">
+                        <label>Shop Description:</label>
+                        <input type="text" id="shop-desc" placeholder="Short description...">
                     </div>
-                    <button class="btn-primary" onclick="registerSeller()">Đăng Ký Ngay</button>
+                    <button class="btn-primary" onclick="registerSeller()">Register Now</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div id="review-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal('review-modal')">&times;</span>
+            <h3 style="margin-bottom: 15px; text-align: center;">Rate Product</h3>
+            
+            <div style="text-align: center; margin-bottom: 20px;">
+                <p id="review-prod-name" style="font-weight: bold; margin-bottom: 10px;">Product Name</p>
+                
+                <input type="hidden" id="review-prod-id">
+                <input type="hidden" id="review-order-detail-id">
+
+                <div class="star-rating" style="font-size: 30px; color: #ddd; cursor: pointer;">
+                    <span onclick="setRating(1)">★</span>
+                    <span onclick="setRating(2)">★</span>
+                    <span onclick="setRating(3)">★</span>
+                    <span onclick="setRating(4)">★</span>
+                    <span onclick="setRating(5)">★</span>
+                </div>
+                <input type="hidden" id="review-score" value="0">
+                <p id="rating-text" style="font-size: 14px; margin-top: 5px; color: #666;">Select stars</p>
+            </div>
+
+            <button class="btn-primary" style="width: 100%" onclick="submitReview()">Submit Review</button>
         </div>
     </div>
 

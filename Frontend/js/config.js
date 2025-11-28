@@ -21,7 +21,7 @@ async function authFetch(endpoint, options = {}) {
 
     // Nếu token hết hạn (401/403), tự động đăng xuất
     if (response.status === 401 || response.status === 403) {
-        alert("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+        alert("Session expired. Please log in again.");
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         window.location.href = 'login.html';

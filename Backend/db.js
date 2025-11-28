@@ -7,11 +7,11 @@ require('dotenv').config(); // Load environment variables from .env file
  * Using a pool is more efficient than creating a new connection for every request.
  */
 const pool = mysql.createPool({
-    host: process.env.DB_HOST,       // Aiven Host (e.g., mysql-service.aivencloud.com)
-    port: process.env.DB_PORT,       // Aiven Port (e.g., 12345 - NOT 3306)
-    user: process.env.DB_USER,       // Database Username (e.g., avnadmin)
+    host: process.env.DB_HOST,       // Aiven Host 
+    port: process.env.DB_PORT,       // Aiven Port 
+    user: process.env.DB_USER,       // Database Username 
     password: process.env.DB_PASSWORD, // Database Password
-    database: process.env.DB_NAME,   // Database Name (e.g., KeyCraftShopee)
+    database: process.env.DB_NAME,   // Database Name 
     waitForConnections: true,        // Queue requests if no connections are available
     connectionLimit: 10,             // Max number of simultaneous connections
     queueLimit: 0,                   // Unlimited queueing

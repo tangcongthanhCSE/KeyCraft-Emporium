@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Cart - KeyCraft</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* Cart Container Styles */
+        .container { 
+            max-width: 1000px; 
+            margin: 30px auto; 
+            padding: 20px; 
+            background: white; 
+            border-radius: 4px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+        }
+
+        /* Table Styles */
+        .cart-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .cart-table th { text-align: left; padding: 15px; background: #f9f9f9; border-bottom: 2px solid #eee; font-weight: 600; }
+        .cart-table td { padding: 15px; border-bottom: 1px solid #eee; vertical-align: middle; }
+        
+        .cart-img { width: 60px; height: 60px; object-fit: cover; border: 1px solid #ddd; border-radius: 4px; }
+        .cart-checkbox { transform: scale(1.2); cursor: pointer; }
+
+        /* Total & Checkout Section */
+        .total-section { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: flex-end; 
+            margin-top: 20px; 
+            padding-top: 20px; 
+            border-top: 2px solid #f0f0f0; 
+        }
+        .total-label { font-size: 16px; color: #555; }
+        .total-price { font-size: 28px; color: var(--primary-color); font-weight: bold; }
+
+        .checkout-btn { 
+            background: var(--primary-color); 
+            color: white; 
+            border: none; 
+            padding: 12px 40px; 
+            font-size: 16px; 
+            cursor: pointer; 
+            margin-top: 15px; 
+            border-radius: 2px;
+            transition: background 0.2s;
+        }
+        .checkout-btn:hover { background: #d73211; }
+
+        /* Modal Styles */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; visibility: hidden; opacity: 0; transition: opacity 0.3s; }
+        .modal.active { visibility: visible; opacity: 1; }
+        .modal-content { background: white; width: 450px; padding: 25px; border-radius: 4px; position: relative; }
+        .close-btn { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; }
+
+        /* Payment Options */
+        .payment-option { border: 1px solid #ddd; padding: 12px; margin-bottom: 10px; cursor: pointer; border-radius: 4px; display: flex; align-items: center; gap: 10px; }
+        .payment-option:hover { border-color: #aaa; }
+        .payment-option.selected { border-color: var(--primary-color); background: #fff5f1; }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h1>KeyCraft Cart</h1>
+        <div class="user-info">
+            <a href="index.html" class="btn-nav">Continue Shopping</a>
+            <a href="profile.html" class="btn-nav">My Profile</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Shopping Cart</h2>
+        
+        <table class="cart-table">
+            <thead>
+                <tr>
+                    <th width="5%">
+                        <input type="checkbox" id="check-all" class="cart-checkbox" onclick="toggleAllItems(this)">
+                    </th>
+                    <th width="45%">Product</th>
+                    <th>Unit Price</th>
+                    <th>Quantity</th>
+                    <th>Total Price</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="cart-body">
+                <tr><td colspan="6" style="text-align:center; padding: 30px;">Loading cart...</td></tr>
+            </tbody>
+        </table>
+        
+        <div class="total-section">
+            <span class="total-label">Total Selected:</span>
+            <span id="cart-total" class="total-price">$0.00</span>
+            <button class="checkout-btn" onclick="openCheckoutModal()">Proceed to Checkout</button>
+        </div>
+    </div>
+
+    <div id="checkout-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <h3 style="margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px;">Payment & Delivery</h3>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="font-weight: bold; display: block; margin-bottom: 8px;">Shipping Address:</label>
+                <select id="address-select" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                    </select>
+            </div>
+
+            <label style="font-weight: bold; display: block; margin-bottom: 8px;">Payment Method:</label>
+            <div class="payment-option selected" onclick="selectPayment('COD', this)">
+                <input type="radio" name="paymethod" value="COD" checked> 
+                <div>
+                    <b>Cash on Delivery (COD)</b><br>
+                    <small style="color:#666">Pay when you receive the package.</small>
+                </div>
+            </div>
+            <div class="payment-option" onclick="selectPayment('CreditCard', this)">
+                <input type="radio" name="paymethod" value="CreditCard"> 
+                <div>
+                    <b>Credit Card</b><br>
+                    <small style="color:#666">Visa / Mastercard / JCB</small>
+                </div>
+            </div>
+
+            <div id="card-form" style="display: none; margin-top: 15px; background: #f9f9f9; padding: 15px; border-radius: 4px;">
+                <input type="text" placeholder="Card Number (16 digits)" style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd;">
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" placeholder="MM/YY" style="flex: 1; padding: 8px; border: 1px solid #ddd;">
+                    <input type="text" placeholder="CVV" style="flex: 1; padding: 8px; border: 1px solid #ddd;">
+                </div>
+            </div>
+
+            <div style="margin-top: 25px; display: flex; gap: 10px; justify-content: flex-end;">
+                <button class="btn-sm" style="background: #ccc; color: #333; padding: 10px 20px;" onclick="closeModal()">Cancel</button>
+                <button class="btn-primary" style="padding: 10px 30px;" onclick="processCheckout()">Place Order</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/cart.js"></script>
+</body>
+</html>

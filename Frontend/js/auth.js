@@ -33,10 +33,10 @@ async function handleRegister(event) {
         const data = await response.json();
 
         if (response.ok) {
-            alert("Đăng ký thành công! Vui lòng đăng nhập.");
-            toggleAuth(); // Chuyển sang form đăng nhập
+            alert("Registration successful! Please log in.");
+            toggleAuth(); // Switch to login form
         } else {
-            alert(data.error || "Đăng ký thất bại");
+            alert(data.error || "Registration failed");
         }
     } catch (error) {
         console.error(error);
@@ -65,7 +65,7 @@ async function handleLogin(event) {
             localStorage.setItem('token', data.token);
             localStorage.setItem('user', JSON.stringify(data.user));
 
-            alert("Đăng nhập thành công!");
+            alert("Login successfully!");
 
             // 2. Phân quyền chuyển hướng (Redirect)
             const role = data.user.role;
@@ -76,10 +76,10 @@ async function handleLogin(event) {
                 window.location.href = 'index.html';
             }
         } else {
-            alert(data.error || "Sai tài khoản hoặc mật khẩu");
+            alert(data.error || "Incorrect username or password");
         }
     } catch (error) {
         console.error(error);
-        alert("Lỗi kết nối server");
+        alert("Server connection error");
     }
 }

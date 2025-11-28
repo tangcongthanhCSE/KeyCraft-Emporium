@@ -11,41 +11,40 @@ const JWT_SECRET = process.env.JWT_SECRET || 'keycraft_secret_key_2024';
  * Usage: Add this middleware to any protected route.
  */
 const verifyToken = (req, res, next) => {
-    console.log("   [1] Đang kiểm tra Token..."); // <--- LOG DEBUG
+    console.log("   [1] Checking Token..."); // <--- LOG DEBUG
 
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1]; 
 
     if (!token) {
-        console.log("   [Error] Không tìm thấy Token trong Header!"); // <--- LOG DEBUG
-        return res.status(401).json({ error: "Truy cập bị từ chối. Vui lòng gửi kèm Token." });
+        console.log("   [Error] Token not found in Header!"); // <--- LOG DEBUG
+        return res.status(401).json({ error: "Access denied. Please provide a token." });
     }
 
     try {
         const verified = jwt.verify(token, JWT_SECRET);
         req.user = verified;
-        console.log("   [2] Token hợp lệ! User decoded:", verified); // <--- LOG DEBUG QUAN TRỌNG: Xem role là gì
+        console.log("   [2] Token valid! User decoded:", verified); // <--- LOG DEBUG IMPORTANT: Check what role it is
         next(); 
     } catch (err) {
-        console.log("   [Error] Token lỗi:", err.message); // <--- LOG DEBUG: Xem lỗi cụ thể (hết hạn hay sai key)
-        res.status(403).json({ error: "Token không hợp lệ hoặc đã hết hạn" });
+        console.log("   [Error] Token error:", err.message); // <--- LOG DEBUG: Check specific error (expired or wrong key)
+        res.status(403).json({ error: "Token is invalid or has expired" });
     }
 };
 
 // 2. Middleware phân quyền Admin
 const verifyAdmin = (req, res, next) => {
-    console.log("Middleware Admin đang kiểm tra...");
+    console.log("Middleware Admin is checking..."); // <--- LOG DEBUG
     
     verifyToken(req, res, () => {
         // Khi verifyToken chạy xong next(), nó sẽ nhảy vào đây
-        console.log("   [3] Đang check Role Admin. Role hiện tại là:", req.user.role); // <--- LOG DEBUG
-
+        console.log("   [3] Checking Admin Role. Current role is:", req.user.role); // <--- LOG DEBUG
         if (req.user.role === 'Admin') {
-            console.log("   [4] Role đúng là Admin -> Cho qua!"); // <--- LOG DEBUG
+            console.log("   [4] Role is Admin -> Allowing access!"); // <--- LOG DEBUG
             next();
         } else {
-            console.log("   [Error] Bị chặn vì Role không phải Admin!"); // <--- LOG DEBUG
-            res.status(403).json({ error: "Bạn không có quyền Admin!" });
+            console.log("   [Error] Access denied because role is not Admin!"); // <--- LOG DEBUG
+            res.status(403).json({ error: "You do not have Admin privileges!" });
         }
     });
 };

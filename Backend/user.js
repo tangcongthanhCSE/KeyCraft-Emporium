@@ -1,17 +1,15 @@
-// File: user.js
+// File: backend/user.js
 const express = require('express');
-const db = require('./db'); // Connection to Aiven MySQL
-const { verifyToken } = require('./middleware'); // Protect routes
+const db = require('./db');
+const { verifyToken } = require('./middleware'); 
 const router = express.Router();
 
 // ==================================================================
-// API: UPDATE USER PROFILE
+// API: UPDATE USER PROFILE (Avatar, Phone, Address)
 // Endpoint: PUT /api/user/profile
-// Header: Authorization: Bearer <token>
-// Body: { avatar, phone, address: { ... } }
 // ==================================================================
 router.put('/profile', verifyToken, async (req, res) => {
-    const userId = req.user.id; // Extracted from JWT token
+    const userId = req.user.id; 
     const { avatar, phone, address } = req.body;
 
     let connection;
@@ -19,59 +17,39 @@ router.put('/profile', verifyToken, async (req, res) => {
         connection = await db.getConnection();
         await connection.beginTransaction();
 
-        // 1. Update Avatar in 'USERS' table
+        // 1. Update Avatar
         if (avatar) {
-            await connection.query(
-                'UPDATE USERS SET Avatar = ? WHERE UserID = ?',
-                [avatar, userId]
-            );
+            await connection.query('UPDATE USERS SET Avatar = ? WHERE UserID = ?', [avatar, userId]);
         }
 
-        // 2. Update Phone Number in 'USER_PHONE' table
-        // Strategy: Delete old number -> Insert new number (Simplifies logic)
+        // 2. Update Phone (Delete old -> Insert new strategy)
         if (phone) {
             await connection.query('DELETE FROM USER_PHONE WHERE UserID = ?', [userId]);
-            await connection.query(
-                'INSERT INTO USER_PHONE (UserID, PhoneNumber) VALUES (?, ?)',
-                [userId, phone]
-            );
+            await connection.query('INSERT INTO USER_PHONE (UserID, PhoneNumber) VALUES (?, ?)', [userId, phone]);
         }
 
-        // 3. Add New Address to 'ADDRESS' table
+        // 3. Add New Address
         if (address) {
-            // Since ADDRESS uses a composite key (UserID, AddressID), we must calculate the next AddressID.
-            const [rows] = await connection.query(
-                'SELECT MAX(AddressID) as maxId FROM ADDRESS WHERE UserID = ?',
-                [userId]
-            );
+            // Calculate next AddressID for composite key
+            const [rows] = await connection.query('SELECT MAX(AddressID) as maxId FROM ADDRESS WHERE UserID = ?', [userId]);
             const nextAddressId = (rows[0].maxId || 0) + 1;
-
-            // If this is the first address, set it as default (IsDefault = 1)
+            
+            // First address is default by default
             const isDefault = nextAddressId === 1 ? 1 : 0; 
 
             await connection.query(
                 `INSERT INTO ADDRESS 
                 (UserID, AddressID, ReceiverName, Phone, City, District, Street, IsDefault, AddressType) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [
-                    userId, 
-                    nextAddressId, 
-                    address.receiverName, 
-                    address.phone || phone, // Use address specific phone or fallback to main phone
-                    address.city, 
-                    address.district, 
-                    address.street, 
-                    isDefault,
-                    address.addressType || 'Delivery'
-                ]
+                [userId, nextAddressId, address.receiverName, address.phone || phone, address.city, address.district, address.street, isDefault, address.addressType || 'Delivery']
             );
         }
 
-        await connection.commit(); // Save changes
+        await connection.commit();
         res.json({ message: "Profile updated successfully!" });
 
     } catch (error) {
-        if (connection) await connection.rollback(); // Revert changes on error
+        if (connection) await connection.rollback();
         console.error("Update Profile Error:", error);
         res.status(500).json({ error: "Failed to update profile: " + error.message });
     } finally {
@@ -82,13 +60,11 @@ router.put('/profile', verifyToken, async (req, res) => {
 // ==================================================================
 // API: GET USER PROFILE
 // Endpoint: GET /api/user/profile
-// Header: Authorization: Bearer <token>
-// Description: Fetches all user info including phones and addresses.
 // ==================================================================
 router.get('/profile', verifyToken, async (req, res) => {
     const userId = req.user.id;
     try {
-        // 1. Get Basic Info + Buyer Info (Left Join in case user is not a buyer, though unlikely)
+        // 1. Get Basic User Info + Buyer Data
         const [users] = await db.query(`
             SELECT u.UserID, u.Username, u.Email, u.Avatar, b.CoinBalance, b.MembershipLevel 
             FROM USERS u
@@ -114,41 +90,126 @@ router.get('/profile', verifyToken, async (req, res) => {
         res.status(500).json({ error: "Failed to retrieve profile." });
     }
 });
+
 // ==================================================================
-// API: REGISTER AS SELLER (UPGRADE TO SELLER)
+// API: UPGRADE TO SELLER
 // Endpoint: POST /api/user/become-seller
 // ==================================================================
 router.post('/become-seller', verifyToken, async (req, res) => {
     const userId = req.user.id;
     const { shopName, shopDescription } = req.body;
 
-    // 1. Validate dữ liệu
-    if (!shopName) {
-        return res.status(400).json({ error: "Please enter a Shop name" });
-    }
+    if (!shopName) return res.status(400).json({ error: "Shop Name is required" });
 
     try {
-        // 2. Kiểm tra xem User này đã là Seller chưa (Tránh lỗi Duplicate Key)
+        // Check if already a seller
         const [existing] = await db.query('SELECT UserID FROM SELLER WHERE UserID = ?', [userId]);
-        if (existing.length > 0) {
-            return res.status(400).json({ error: "This account is already a Seller!" });
-        }
+        if (existing.length > 0) return res.status(400).json({ error: "You are already a Seller!" });
 
-        // 3. Insert vào bảng SELLER
         await db.query(
             'INSERT INTO SELLER (UserID, ShopName, ShopDescription, Rating, ResponseRate) VALUES (?, ?, ?, 5.0, 100)',
             [userId, shopName, shopDescription || '']
         );
 
         res.json({ message: "Congratulations! You are now a Seller." });
+    } catch (error) {
+        console.error("Register Seller Error:", error);
+        if (error.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: "Shop Name already taken." });
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// ==================================================================
+// API: CALCULATE MEMBERSHIP LEVEL (Call SQL Function)
+// Endpoint: GET /api/user/membership-status
+// ==================================================================
+router.get('/membership-status', verifyToken, async (req, res) => {
+    const userId = req.user.id;
+    try {
+        // Execute SQL Function: SELECT fn_CalculateMembershipLevel(?)
+        const [rows] = await db.query('SELECT fn_CalculateMembershipLevel(?) AS CalculatedRank', [userId]);
+        
+        res.json({ 
+            userId: userId,
+            currentRank: rows[0].CalculatedRank 
+        });
+    } catch (error) {
+        console.error("Calc Membership Error:", error);
+        res.status(500).json({ error: "Failed to calculate membership." });
+    }
+});
+
+// ==================================================================
+// API: GET ORDER HISTORY (With 40s Lazy Update & Rating Info)
+// Endpoint: GET /api/user/orders
+// ==================================================================
+router.get('/orders', verifyToken, async (req, res) => {
+    const userId = req.user.id;
+
+    try {
+        // 1. LAZY UPDATE: Auto-update Shipment Status to 'Delivered' 
+        // if OrderDate was more than 40 seconds ago.
+        await db.query(`
+            UPDATE SHIPMENT s
+            JOIN ORDER_DETAIL od ON s.ShipmentID = od.ShipmentID
+            JOIN ORDERS o ON od.OrderID = o.OrderID
+            SET s.Status = 'Delivered', s.ActualDeliveryDate = NOW()
+            WHERE o.BuyerID = ? 
+            AND s.Status = 'Preparing'
+            AND o.OrderDate < DATE_SUB(NOW(), INTERVAL 40 SECOND)
+        `, [userId]);
+
+        // 2. Fetch Orders with Details (Including OrderDetailID and IsRated)
+        const [rows] = await db.query(`
+            SELECT 
+                o.OrderID, o.OrderDate, o.FinalTotal,
+                s.Status AS ShipStatus, s.TrackingNumber,
+                p.Method AS PayMethod, p.Status AS PayStatus,
+                od.OrderDetailID, -- Needed for Rating
+                od.IsRated,       -- Needed to check if already rated
+                od.ProductID, pr.Name AS ProductName, pr.ImageURL, 
+                od.Quantity, od.UnitPrice, pr.SellerID, sl.ShopName
+            FROM ORDERS o
+            JOIN ORDER_DETAIL od ON o.OrderID = od.OrderID
+            JOIN SHIPMENT s ON od.ShipmentID = s.ShipmentID
+            JOIN PAYMENT p ON od.TransactionID = p.TransactionID
+            JOIN PRODUCT pr ON od.ProductID = pr.ProductID
+            JOIN SELLER sl ON pr.SellerID = sl.UserID
+            WHERE o.BuyerID = ?
+            ORDER BY o.OrderDate DESC
+        `, [userId]);
+
+        // 3. Group data by OrderID
+        const orders = {};
+        rows.forEach(row => {
+            if (!orders[row.OrderID]) {
+                orders[row.OrderID] = {
+                    OrderID: row.OrderID,
+                    OrderDate: row.OrderDate,
+                    FinalTotal: row.FinalTotal,
+                    ShipStatus: row.ShipStatus,
+                    PayMethod: row.PayMethod,
+                    PayStatus: row.PayStatus,
+                    Items: []
+                };
+            }
+            orders[row.OrderID].Items.push({
+                OrderDetailID: row.OrderDetailID,
+                ProductID: row.ProductID,
+                ProductName: row.ProductName,
+                ImageURL: row.ImageURL,
+                Quantity: row.Quantity,
+                UnitPrice: row.UnitPrice,
+                ShopName: row.ShopName,
+                IsRated: row.IsRated
+            });
+        });
+
+        res.json(Object.values(orders));
 
     } catch (error) {
-        console.error("Register Seller Error:", error); 
-        if (error.code === 'ER_DUP_ENTRY') {
-            return res.status(409).json({ error: "Shop name already exists." });
-        }
-        
-        res.status(500).json({ error: "System error: " + error.message });
+        console.error("Get Orders Error:", error);
+        res.status(500).json({ error: "Internal Server Error" });
     }
 });
 
